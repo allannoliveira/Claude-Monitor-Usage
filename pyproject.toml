@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-monitor"
+dynamic = ["version"]
+description = "Monitor de uso e limites do Claude Code (bandeja do sistema ou terminal)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pystray>=0.19.5",
+    "Pillow>=10.0",
+    "rich>=13.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.urls]
+Repository = "https://github.com/allannoliveira/Claude-Monitor-Usage"
+
+[project.scripts]
+claude-monitor = "claude_monitor.app:main"
+
+[project.gui-scripts]
+# No Windows roda via pythonw (sem janela de console).
+claude-monitor-tray = "claude_monitor.app:main_tray"
+
+[tool.setuptools]
+packages = ["claude_monitor"]
+
+[tool.setuptools.dynamic]
+version = { attr = "claude_monitor.__version__" }
+
+[tool.setuptools.package-data]
+claude_monitor = ["assets/*.gif", "assets/*.png", "assets/*.ico"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

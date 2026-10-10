@@ -1,0 +1,54 @@
+name: Release
+
+# Deploy: criar e enviar uma tag vX.Y.Z na main gera o .exe, o wheel e a
+# GitHub Release automaticamente.
+#   git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]" pyinstaller build
+
+      - name: Conferir versão da tag
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          CODE=$(python -c "import claude_monitor; print(claude_monitor.__version__)")
+          if [ "$TAG" != "$CODE" ]; then
+            echo "::error::Tag v$TAG difere de __version__ $CODE (claude_monitor/__init__.py)"
+            exit 1
+          fi
+
+      - name: Testes
+        run: python -m pytest -q
+
+      - name: Executável Windows
+        run: python scripts/build_exe.py
+
+      - name: Wheel / sdist
+        run: python -m build
+
+      - name: Publicar Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/claude-monitor.exe
+            dist/*.whl
+            dist/*.tar.gz
