@@ -16,3 +16,7 @@ dist/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Personagem local (será refeito com emoções; não vai para o repositório)
+boneco.*
+Idle_rotations_8dir.gif

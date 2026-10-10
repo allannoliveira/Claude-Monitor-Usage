@@ -43,7 +43,6 @@ O widget é uma janela com transparência por pixel presa dentro da barra de tar
 ```
 Claude-Monitor-Usage/
 ├── main.py                  # atalho: python main.py [tray|cli]
-├── boneco.gif               # ícone (animado) da bandeja
 ├── install.ps1 / install.sh # instaladores de um comando
 ├── scripts/build_exe.py     # gera o .exe (PyInstaller)
 ├── tests/                   # pytest
