@@ -66,16 +66,18 @@ Claude-Monitor-Usage/
 
 A lógica de monitoramento (`usage_api`, `local_logs`, `service`) não importa nada de UI.
 
-## Personagem com emoções
+## Personagem com emoções: o Discipulinho
 
-O personagem fica dentro do widget, colado à esquerda das barras, e reage ao **maior** uso entre a sessão de 5h e a semanal:
+O **Discipulinho**, do conjunto "Mascotes – Árvore da Vida", fica dentro do widget, colado à esquerda das barras, e reage ao **maior** uso entre a sessão de 5h e a semanal:
+
+![Discipulinho nos 5 humores](docs/discipulinho.png)
 
 | Uso | Humor | Animação |
 |---|---|---|
 | 0–10% | 😴 **dormindo** | "Zzz" subindo, respirando |
 | 10–50% | 🙂 **feliz** | pulinho e piscadas |
-| 50–75% | 😐 **focado** | gota de suor escorrendo |
-| 75–95% | 😠 **bravo** | fica vermelho, treme e solta fumaça |
+| 50–75% | 📖 **focado** | lendo a Bíblia, com os olhos acompanhando o texto e a página virando |
+| 75–95% | 😠 **bravo** | bochechas vermelhas, 💢, treme e solta fumaça |
 | ≥ 95% | 😭 **chorando** | cachoeira de lágrimas |
 
 - Os limites de cada humor ficam em `MOOD_THRESHOLDS`, em [`claude_monitor/character.py`](claude_monitor/character.py).
@@ -84,7 +86,7 @@ O personagem fica dentro do widget, colado à esquerda das barras, e reage ao **
 
 ### Arte própria (opcional)
 
-O desenho padrão é gerado por código, em pixel art 24×24. Para usar a sua arte, coloque um arquivo por humor na pasta `personagem/`:
+O Discipulinho padrão é desenhado por código, em pixel art 24×24 (mapa de cores em `BASE`, em `character.py`). Para usar a sua arte, coloque um arquivo por humor na pasta `personagem/`:
 
 ```
 %APPDATA%\claude-monitor\personagem\     (Windows)

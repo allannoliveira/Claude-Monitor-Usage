@@ -5,7 +5,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); 
 ## [Não lançado]
 
 ### Adicionado
-- Personagem com emoções dentro do widget, colado à esquerda das barras: dormindo (0–10%), feliz, focado, bravo (75–95%) e chorando (≥ 95%), todos animados.
+- **Discipulinho**, personagem com emoções dentro do widget, colado à esquerda das barras: dormindo (0–10%), feliz, focado lendo a Bíblia, bravo (75–95%) e chorando (≥ 95%), todos animados.
 - Arte própria por humor em `<config>/personagem/<humor>.gif|png`.
 - Menu da bandeja: *Personagem com emoções* e *Animar personagem*.
 
