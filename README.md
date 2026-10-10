@@ -2,7 +2,11 @@
 
 [![CI](https://github.com/allannoliveira/Claude-Monitor-Usage/actions/workflows/ci.yml/badge.svg)](https://github.com/allannoliveira/Claude-Monitor-Usage/actions/workflows/ci.yml)
 
-Mostra o uso e os limites do Claude Code de três formas: um widget com barrinhas dentro da barra de tarefas do Windows, um ícone animado na bandeja do sistema e um painel no terminal. Funciona no Windows e no Linux.
+Mostra o uso e os limites do Claude Code de três formas: um widget com barrinhas dentro da barra de tarefas do Windows, um ícone na bandeja do sistema e um painel no terminal. Funciona no Windows e no Linux.
+
+![Widget na barra de tarefas: conforme o uso sobe, as barras enchem e o Discipulinho muda de humor](docs/demo_barra.gif)
+
+*Conforme o uso sobe, as barras enchem e o Discipulinho muda de humor: dorme, fica feliz, lê a Bíblia, fica bravo e chora quando o limite estoura.*
 É um port em Python da lógica de [CodeZeno/Claude-Code-Usage-Monitor](https://github.com/CodeZeno/Claude-Code-Usage-Monitor) (Rust).
 
 ## Como funciona
@@ -19,10 +23,8 @@ Se o token estiver expirado, o app roda `claude -p .` para o próprio CLI renov�
 
 Ao lado dos ícones da bandeja aparecem o **personagem** e duas linhas, uma para a sessão de 5h e outra para a semanal, com o percentual usado e o tempo até o reset:
 
-```
- (◕‿◕)  5h ■■■■■■■■□□ 79% · 2h
-        7d ■□□□□□□□□□ 11% · 4d
-```
+
+![Os 3 estilos do widget](docs/estilos.gif)
 
 | Estilo | Visual |
 |---|---|
@@ -45,6 +47,8 @@ Claude-Monitor-Usage/
 ├── main.py                  # atalho: python main.py [tray|cli]
 ├── install.ps1 / install.sh # instaladores de um comando
 ├── scripts/build_exe.py     # gera o .exe (PyInstaller)
+├── scripts/make_docs_gifs.py # gera as animações do README
+├── docs/                    # GIFs do README
 ├── tests/                   # pytest
 ├── .github/workflows/       # CI + release automática
 └── claude_monitor/
@@ -70,7 +74,7 @@ A lógica de monitoramento (`usage_api`, `local_logs`, `service`) não importa n
 
 O **Discipulinho**, do conjunto "Mascotes – Árvore da Vida", fica dentro do widget, colado à esquerda das barras, e reage ao **maior** uso entre a sessão de 5h e a semanal:
 
-![Discipulinho nos 5 humores](docs/discipulinho.png)
+![Os 5 humores do Discipulinho, animados](docs/humores.gif)
 
 | Uso | Humor | Animação |
 |---|---|---|
@@ -188,6 +192,7 @@ python main.py cli --no-local     # só os limites da API, sem ler os .jsonl
 - **CI:** cada push e cada PR rodam os testes no Windows e no Linux (Python 3.10 e 3.13).
 - **Deploy:** depois do merge `develop → main`, rode `git tag vX.Y.Z && git push origin vX.Y.Z`. A release com `claude-monitor.exe` e o wheel é publicada automaticamente.
 - **Executável local:** `pip install pyinstaller` e depois `python scripts/build_exe.py` (o arquivo sai em `dist/claude-monitor.exe`).
+- **Animações do README:** `python scripts/make_docs_gifs.py` gera de novo os GIFs de `docs/` com o desenho atual. Rode sempre que mudar o personagem ou os estilos.
 - **Testes:** `pip install -e ".[dev]"` e depois `python -m pytest -q`.
 
 O passo a passo completo está em [CONTRIBUTING.md](CONTRIBUTING.md).
