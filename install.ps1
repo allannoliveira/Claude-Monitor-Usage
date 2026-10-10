@@ -22,12 +22,13 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     $env:Path = "$env:USERPROFILE\.local\bin;$env:Path"
 }
 
-# 2. Copia o boneco para a pasta do usuÃ¡rio (se estiver instalando de uma pasta local)
+# 2. Arte propria do personagem (opcional): copia a pasta personagem\ do projeto
 $ConfigDir = Join-Path $env:APPDATA "claude-monitor"
 New-Item -ItemType Directory -Force $ConfigDir | Out-Null
-foreach ($name in "boneco.gif", "boneco.png", "boneco.ico") {
-    $src = if (Test-Path $Source) { Join-Path $Source $name } else { "" }
-    if ($src -and (Test-Path $src)) { Copy-Item $src $ConfigDir -Force; Write-Host "Icone copiado: $ConfigDir\$name" }
+$ArtDir = if (Test-Path $Source) { Join-Path $Source "personagem" } else { "" }
+if ($ArtDir -and (Test-Path $ArtDir)) {
+    Copy-Item $ArtDir $ConfigDir -Recurse -Force
+    Write-Host "Personagem copiado para $ConfigDir\personagem"
 }
 
 # 3. Instala o app como ferramenta isolada (cria claude-monitor e claude-monitor-tray)

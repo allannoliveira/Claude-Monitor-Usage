@@ -89,7 +89,20 @@ def _text_block(d: ImageDraw.ImageDraw, x: int, cy: int, row: Row, pal: Palette,
     d.text((x + bold_font.getlength(pct), cy), _reset_text(row), fill=pal.dim, font=font, anchor="lm")
 
 
-def render(rows: list[Row], style: str, height: int, scale: float, light: bool = False) -> Image.Image:
+def render(rows: list[Row], style: str, height: int, scale: float, light: bool = False,
+           character: Image.Image | None = None) -> Image.Image:
+    """Desenha o widget; se ``character`` vier, ele fica colado à esquerda."""
+    bars = _render_bars(rows, style, height, scale, light)
+    if character is None:
+        return bars
+    gap = round(2 * max(scale, 0.5))
+    out = Image.new("RGBA", (character.width + gap + bars.width, height), (0, 0, 0, 0))
+    out.alpha_composite(character, (0, max(0, (height - character.height) // 2)))
+    out.alpha_composite(bars, (character.width + gap, 0))
+    return out
+
+
+def _render_bars(rows: list[Row], style: str, height: int, scale: float, light: bool) -> Image.Image:
     pal = LIGHT if light else DARK
     s = max(scale, 0.5)
     font = _font(round(12 * s))

@@ -17,11 +17,11 @@ Se o token estiver expirado, o app roda `claude -p .` para o próprio CLI renov�
 
 ## Widget na barra de tarefas (Windows)
 
-Ao lado dos ícones da bandeja aparecem duas linhas, uma para a sessão de 5h e outra para a semanal, com o percentual usado e o tempo até o reset:
+Ao lado dos ícones da bandeja aparecem o **personagem** e duas linhas, uma para a sessão de 5h e outra para a semanal, com o percentual usado e o tempo até o reset:
 
 ```
-5h ■■■■■■■■□□ 79% · 2h
-7d ■□□□□□□□□□ 11% · 4d
+ (◕‿◕)  5h ■■■■■■■■□□ 79% · 2h
+        7d ■□□□□□□□□□ 11% · 4d
 ```
 
 | Estilo | Visual |
@@ -49,7 +49,7 @@ Claude-Monitor-Usage/
 ├── .github/workflows/       # CI + release automática
 └── claude_monitor/
     ├── app.py               # argparse / entry points
-    ├── paths.py             # caminhos multiplataforma (credenciais, logs, ícone)
+    ├── paths.py             # caminhos multiplataforma (credenciais, logs, config)
     ├── models.py            # dataclasses (UsageWindow, TokenTotals, Snapshot)
     ├── usage_api.py         # credenciais OAuth + API de uso + fallback por headers
     ├── local_logs.py        # soma de tokens dos .jsonl
@@ -58,6 +58,7 @@ Claude-Monitor-Usage/
     ├── settings.py          # preferências salvas (estilo do widget etc.)
     ├── cli.py               # modo terminal (rich)
     ├── tray.py              # modo bandeja (pystray + Pillow)
+    ├── character.py         # personagem com emoções (pixel art + arte própria)
     ├── widget_render.py     # desenho dos 3 estilos do widget (Pillow)
     ├── taskbar_widget.py    # janela Win32 dentro da barra de tarefas (ctypes)
     └── win_tray.py          # fixa o ícone na barra do Windows 11
@@ -65,21 +66,45 @@ Claude-Monitor-Usage/
 
 A lógica de monitoramento (`usage_api`, `local_logs`, `service`) não importa nada de UI.
 
-## O ícone do boneco
+## Personagem com emoções
 
-- **Nome:** `boneco.gif` (animado), `boneco.png` ou `boneco.ico`, nesta ordem de preferência.
-- **GIF animado:** o ícone da bandeja toca os quadros do GIF respeitando a duração de cada um. Pixel art (GIF ou imagens até 128 px) é ampliada sem suavização para não borrar. Para desligar a animação, use o menu "Animar ícone", `--no-anim` ou `CLAUDE_MONITOR_NO_ANIMATION=1`.
-- **Local:** na raiz do projeto, ao lado do `main.py`. Na versão instalada, em `%APPDATA%\claude-monitor\` (Windows) ou `~/.config/claude-monitor/` (Linux).
-- **Tamanho:** quadrado, de preferência **256×256 px** (o mínimo recomendado é 64×64). O app redimensiona para 64×64 com antialiasing, e o sistema reduz para 16–32 px na barra.
-- **Formato:** PNG **com fundo transparente** (RGBA). Use desenhos simples e de alto contraste, porque detalhes finos somem em 16 px. Se for `.ico`, inclua as resoluções 16, 32, 48 e 256; o app usa a maior.
-- **Outro caminho:** defina `CLAUDE_MONITOR_ICON=/caminho/para/imagem.png`.
-- **Fallback:** se o arquivo não existir ou estiver corrompido, o app desenha um bonequinho genérico e mostra um aviso no console. Ele não fecha.
-- **Barrinhas no ícone** (desligadas por padrão, porque o widget já mostra o uso): à direita do boneco aparecem duas barras verticais, a primeira para a sessão de 5h e a segunda para a semanal. Elas enchem de baixo para cima e ficam verdes abaixo de 70%, amarelas de 70% a 89% e vermelhas a partir de 90%. Para ligar ou desligar, use o menu "Barrinhas no ícone".
+O personagem fica dentro do widget, colado à esquerda das barras, e reage ao **maior** uso entre a sessão de 5h e a semanal:
+
+| Uso | Humor | Animação |
+|---|---|---|
+| 0–10% | 😴 **dormindo** | "Zzz" subindo, respirando |
+| 10–50% | 🙂 **feliz** | pulinho e piscadas |
+| 50–75% | 😐 **focado** | gota de suor escorrendo |
+| 75–95% | 😠 **bravo** | fica vermelho, treme e solta fumaça |
+| ≥ 95% | 😭 **chorando** | cachoeira de lágrimas |
+
+- Os limites de cada humor ficam em `MOOD_THRESHOLDS`, em [`claude_monitor/character.py`](claude_monitor/character.py).
+- O menu da bandeja tem *Personagem com emoções* (mostra o humor atual e liga ou desliga) e *Animar personagem*. Também dá para desligar a animação com `--no-anim` ou `CLAUDE_MONITOR_NO_ANIMATION=1`.
+- Com o widget ligado, a bandeja mostra só um ícone genérico. Com o widget desligado (ou no Linux), o personagem vai para o ícone da bandeja.
+
+### Arte própria (opcional)
+
+O desenho padrão é gerado por código, em pixel art 24×24. Para usar a sua arte, coloque um arquivo por humor na pasta `personagem/`:
+
+```
+%APPDATA%\claude-monitor\personagem\     (Windows)
+~/.config/claude-monitor/personagem/       (Linux)
+    dormindo.gif   feliz.gif   focado.gif   bravo.gif   chorando.gif
+```
+
+- Aceita `.gif` (animado, respeitando a duração de cada quadro) ou `.png`. O humor que não tiver arquivo usa o desenho padrão.
+- **Tamanho:** a altura do widget é a altura da barra de tarefas (48 px a 100% de escala). Pixel art de 24 px ou 48 px de altura, com fundo transparente, é ampliada sem borrar.
+- O instalador copia a pasta `personagem/` do projeto para lá, se ela existir.
+- Se algum arquivo estiver corrompido, o app usa o desenho padrão e não fecha.
+
+## Bandeja do sistema
+
+- **Barrinhas no ícone** (desligadas por padrão, porque o widget já mostra o uso): duas barras verticais no ícone da bandeja, uma para 5h e outra para 7d, verdes abaixo de 70%, amarelas de 70% a 89% e vermelhas a partir de 90%. Liga e desliga pelo menu "Barrinhas no ícone".
 - **Sempre visível (Windows 11):** ao abrir, o app marca o próprio ícone como fixo na barra (`IsPromoted = 1` em `HKCU\Control Panel\NotifyIconSettings`), para ele não ficar escondido no menu **^**. Se ainda aparecer escondido, arraste o ícone da setinha para a barra uma vez. No Windows 10 e no Linux, quem controla isso é o sistema.
 
 ## Instalação com um comando
 
-Os scripts instalam o [uv](https://docs.astral.sh/uv/) se ele faltar (o uv também baixa o Python, se precisar). Depois eles instalam o app isolado, criam os comandos `claude-monitor` e `claude-monitor-tray`, copiam o `boneco.png` para a pasta do usuário e configuram o app para iniciar com o sistema.
+Os scripts instalam o [uv](https://docs.astral.sh/uv/) se ele faltar (o uv também baixa o Python, se precisar). Depois eles instalam o app isolado, criam os comandos `claude-monitor` e `claude-monitor-tray`, copiam a pasta `personagem/` (se houver) para a pasta do usuário e configuram o app para iniciar com o sistema.
 
 | | A partir desta pasta | Direto do GitHub (depois de publicar o repo) |
 |---|---|---|
@@ -89,7 +114,7 @@ Os scripts instalam o [uv](https://docs.astral.sh/uv/) se ele faltar (o uv tamb�
 - Para não iniciar com o sistema: `install.ps1 -NoAutostart` ou `NO_AUTOSTART=1 sh install.sh`.
 - Para atualizar, rode o instalador de novo. Para desinstalar: `uv tool uninstall claude-monitor`. O atalho de inicialização fica em `shell:startup` (Windows) ou `~/.config/autostart/claude-monitor.desktop` (Linux).
 - Sem os scripts: `uv tool install .` ou `pipx install .`.
-- **Ícone na versão instalada:** `%APPDATA%\claude-monitor\boneco.png` (Windows) ou `~/.config/claude-monitor/boneco.png` (Linux).
+- **Arte própria do personagem:** `%APPDATA%\claude-monitor\personagem\` (Windows) ou `~/.config/claude-monitor/personagem/` (Linux).
 
 Depois de instalar, abra um terminal novo e use `claude-monitor` (tray), `claude-monitor cli` ou `claude-monitor cli -w`.
 
@@ -146,8 +171,7 @@ python main.py cli --no-local     # só os limites da API, sem ler os .jsonl
 | Variável | Efeito |
 |---|---|
 | `CLAUDE_CONFIG_DIR` | Pasta de configuração do Claude Code (padrão `~/.claude`) |
-| `CLAUDE_MONITOR_ICON` | Caminho de um ícone alternativo (`.gif`, `.png` ou `.ico`) |
-| `CLAUDE_MONITOR_NO_ANIMATION` | Se definida, não anima o GIF |
+| `CLAUDE_MONITOR_NO_ANIMATION` | Se definida, não anima o personagem |
 | `CLAUDE_MONITOR_NO_CLI_REFRESH` | Se definida, não roda `claude -p .` para renovar o token expirado |
 | `PYSTRAY_BACKEND` | Backend do tray no Linux (`appindicator`, `gtk`, `xorg`) |
 

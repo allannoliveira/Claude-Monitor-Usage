@@ -22,6 +22,7 @@ from typing import Callable
 
 from PIL import Image
 
+from . import character
 from .widget_render import STYLES, Row, next_style, render, system_uses_light_theme
 
 if sys.platform != "win32":  # pragma: no cover - módulo exclusivo do Windows
@@ -60,6 +61,7 @@ MF_STRING, MF_SEPARATOR, MF_CHECKED = 0x0, 0x800, 0x8
 TPM_RIGHTBUTTON, TPM_BOTTOMALIGN, TPM_RETURNCMD = 0x2, 0x20, 0x100
 IDC_ARROW = 32512
 TIMER_ID = 1
+TIMER_ANIM = 2
 TIMER_MS = 1000
 CLASS_NAME = "ClaudeMonitorTaskbarWidget"
 
@@ -174,6 +176,9 @@ class TaskbarWidget:
         self._on_style, self._on_refresh = on_style, on_refresh
         self._on_hide, self._on_quit = on_hide, on_quit
         self._rows = [Row("5h", None, None), Row("7d", None, None)]
+        self._mood: str | None = None
+        self._animate = True
+        self._frame = 0
         self.hwnd = None
         self._menu_owner = None
         self._taskbar = None
@@ -190,8 +195,11 @@ class TaskbarWidget:
         self._thread.start()
         self._ready.wait(5)
 
-    def update(self, rows: list[Row]) -> None:
+    def update(self, rows: list[Row], mood: str | None = None, animate: bool = True) -> None:
+        """``mood`` = humor do personagem (None = sem personagem)."""
         self._rows = rows
+        self._mood = mood
+        self._animate = animate
         self._post(WM_APP_REDRAW)
 
     def set_style(self, style: str) -> None:
@@ -302,7 +310,18 @@ class TaskbarWidget:
         tb, _tray, scale = geo
         horizontal = (tb.right - tb.left) >= (tb.bottom - tb.top)
         height = (tb.bottom - tb.top) if horizontal else round(48 * scale)
-        img = render(self._rows, self.style, height, scale, system_uses_light_theme())
+        sprite, delay = None, 0
+        if self._mood:
+            frames = character.frames(self._mood, height)
+            sprite, delay = frames[self._frame % len(frames)]
+            if len(frames) < 2 or not self._animate:
+                delay = 0
+        # agenda o próximo quadro da animação (SetTimer com o mesmo id substitui)
+        if delay:
+            user32.SetTimer(self.hwnd, TIMER_ANIM, delay, None)
+        else:
+            user32.KillTimer(self.hwnd, TIMER_ANIM)
+        img = render(self._rows, self.style, height, scale, system_uses_light_theme(), sprite)
         width, height = img.size
         self._size = (width, height)
         self._position(width, height)
@@ -372,6 +391,10 @@ class TaskbarWidget:
     def _proc(self, hwnd, msg, wparam, lparam):
         try:
             if hwnd == self.hwnd:
+                if msg == WM_TIMER and wparam == TIMER_ANIM:
+                    self._frame += 1
+                    self._present()
+                    return 0
                 if msg == WM_TIMER:
                     if not user32.IsWindow(self._taskbar) or (
                         self._embedded and user32.GetParent(hwnd) != self._taskbar
@@ -398,6 +421,7 @@ class TaskbarWidget:
                     return 0
                 if msg == WM_CLOSE:
                     user32.KillTimer(hwnd, TIMER_ID)
+                    user32.KillTimer(hwnd, TIMER_ANIM)
                     user32.DestroyWindow(hwnd)
                     if self._menu_owner:
                         user32.DestroyWindow(self._menu_owner)

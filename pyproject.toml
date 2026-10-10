@@ -33,8 +33,5 @@ packages = ["claude_monitor"]
 [tool.setuptools.dynamic]
 version = { attr = "claude_monitor.__version__" }
 
-[tool.setuptools.package-data]
-claude_monitor = ["assets/*.gif", "assets/*.png", "assets/*.ico"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]

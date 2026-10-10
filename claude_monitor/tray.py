@@ -7,9 +7,9 @@ import sys
 import threading
 
 import pystray
-from PIL import Image, ImageDraw, ImageSequence
+from PIL import Image, ImageDraw
 
-from . import paths, settings
+from . import character, settings
 from .formatting import human_tokens, level, local_time, text_bar, time_until
 from .models import Snapshot
 from .service import get_snapshot
@@ -51,44 +51,14 @@ def _fit(img: Image.Image, width: int, height: int, pixel_art: bool) -> Image.Im
     return canvas
 
 
-def load_frames() -> tuple[list[Frame], bool]:
-    """Carrega ``boneco.gif`` (animado), ``boneco.png`` ou ``boneco.ico``.
-
-    Retorna (quadros originais, é_pixel_art). Qualquer falha cai no ícone
-    genérico — o app nunca fecha por causa do ícone.
-    """
-    path = paths.find_icon_file()
-    if path is None:
-        return [(fallback_icon(), 0)], False
-    try:
-        with Image.open(path) as img:
-            if getattr(img, "format", "") == "ICO":
-                # escolhe a maior resolução embutida no .ico
-                sizes = sorted(img.info.get("sizes", []) or [img.size])
-                img.size = sizes[-1]
-            pixel_art = img.mode == "P" or max(img.size) <= 128
-            frames: list[Frame] = []
-            for frame in ImageSequence.Iterator(img):
-                duration = max(MIN_FRAME_MS, int(frame.info.get("duration") or 100))
-                frames.append((frame.convert("RGBA"), duration))
-        # Corta as bordas transparentes com o MESMO retângulo em todos os
-        # quadros (união), para o boneco ocupar mais espaço sem "pular".
-        boxes = [b for b in (f.getbbox() for f, _ in frames) if b]
-        if boxes:
-            union = (min(b[0] for b in boxes), min(b[1] for b in boxes),
-                     max(b[2] for b in boxes), max(b[3] for b in boxes))
-            frames = [(f.crop(union), ms) for f, ms in frames]
-        if len(frames) == 1:
-            frames = [(frames[0][0], 0)]
-        return frames, pixel_art
-    except Exception as exc:  # arquivo corrompido, formato inválido, permissão...
-        print(f"[aviso] não foi possível carregar o ícone {path}: {exc}. Usando fallback.")
-        return [(fallback_icon(), 0)], False
+def character_frames(mood: str) -> list[Frame]:
+    """Quadros do personagem para o ícone da bandeja (quadrado 64x64)."""
+    return [(_fit(img, ICON_SIZE, ICON_SIZE, True), ms)
+            for img, ms in character.frames(mood, ICON_SIZE)]
 
 
 def load_base_icon() -> Image.Image:
-    frames, pixel_art = load_frames()
-    return _fit(frames[0][0], ICON_SIZE, ICON_SIZE, pixel_art)
+    return fallback_icon()
 
 
 def _draw_bar(d: ImageDraw.ImageDraw, box: tuple[int, int, int, int], pct: float | None) -> None:
@@ -106,7 +76,7 @@ def _draw_bar(d: ImageDraw.ImageDraw, box: tuple[int, int, int, int], pct: float
 
 def compose_icon(sprite: Image.Image, pixel_art: bool, bars: list[float | None] | None,
                  show_bars: bool) -> Image.Image:
-    """Monta o ícone final: boneco à esquerda + barrinhas verticais à direita
+    """Monta o ícone final: personagem/ícone à esquerda + barrinhas verticais à direita
     (sessão 5h e semanal), coloridas verde/amarelo/vermelho e preenchidas de
     baixo para cima conforme o percentual."""
     if not show_bars or not bars:
@@ -129,17 +99,19 @@ def compose_icon(sprite: Image.Image, pixel_art: bool, bars: list[float | None] 
 class TrayApp:
     def __init__(self, interval: int = 300, include_local: bool = True,
                  animate: bool = True, show_bars: bool = False, widget: bool = True,
-                 widget_style: str = "segmentos"):
+                 widget_style: str = "segmentos", character_on: bool = True):
         self.interval = max(60, interval)
         self.include_local = include_local
         self.snapshot: Snapshot | None = None
-        self.frames, self.pixel_art = load_frames()
-        self.animated = len(self.frames) > 1
-        self.animate = animate and self.animated
+        self.animate = animate
         self.show_bars = show_bars
+        self.character_enabled = character_on
+        self.mood = "feliz"
         self.widget_enabled = widget and sys.platform == "win32"
         self.widget_style = widget_style if widget_style in STYLES else "segmentos"
         self.widget = None
+        self.pixel_art = True
+        self.frames: list[Frame] = self._icon_frames()
         self._bars: list[float | None] | None = None
         self._rendered: list[Frame] = []
         self._render()
@@ -160,9 +132,27 @@ class TrayApp:
             "widget_style": self.widget_style,
             "icon_bars": self.show_bars,
             "animate": self.animate,
+            "character": self.character_enabled,
         })
 
     # -------------------------------------------------------------- render
+    def _icon_frames(self) -> list[Frame]:
+        """O personagem fica no widget; a bandeja só o mostra se não houver widget."""
+        if self.character_enabled and self.widget is None:
+            return character_frames(self.mood)
+        return [(fallback_icon(), 0)]
+
+    def _rebuild_icon(self) -> None:
+        self.frames = self._icon_frames()
+        self._render()
+        if not (self.animate and len(self._rendered) > 1):
+            self._show_static()
+
+    def _push_widget(self) -> None:
+        if self.widget:
+            self.widget.update(self._widget_rows(),
+                               self.mood if self.character_enabled else None, self.animate)
+
     def _render(self) -> None:
         """Pré-renderiza todos os quadros com as barrinhas atuais."""
         self._rendered = [
@@ -189,11 +179,14 @@ class TrayApp:
                                  checked=lambda item: self.widget_enabled),
                 pystray.MenuItem("Estilo do widget", pystray.Menu(*styles)),
             ]
+        items.append(pystray.MenuItem(
+            lambda item: f"Personagem com emoções ({character.MOOD_LABELS[self.mood]})",
+            self._on_toggle_character, checked=lambda item: self.character_enabled))
+        items.append(pystray.MenuItem("Animar personagem", self._on_toggle_animation,
+                                      checked=lambda item: self.animate,
+                                      enabled=lambda item: self.character_enabled))
         items.append(pystray.MenuItem("Barrinhas no ícone", self._on_toggle_bars,
                                       checked=lambda item: self.show_bars))
-        if self.animated:
-            items.append(pystray.MenuItem("Animar ícone", self._on_toggle_animation,
-                                          checked=lambda item: self.animate))
         items.append(pystray.MenuItem("Sair", self._on_quit))
         return items
 
@@ -255,15 +248,18 @@ class TrayApp:
                 on_quit=lambda: self._on_quit(self.icon, None),
             )
             self.widget.start()
-            self.widget.update(self._widget_rows())
+            self._push_widget()
         except Exception as exc:
             print(f"[aviso] widget da barra indisponível: {exc!r}")
             self.widget = None
+        self._rebuild_icon()
 
     def _stop_widget(self) -> None:
         if self.widget is not None:
-            self.widget.close()
-            self.widget = None
+            widget, self.widget = self.widget, None
+            widget.close()
+            if not self._stop.is_set():
+                self._rebuild_icon()  # personagem volta para a bandeja
 
     def _hide_widget(self) -> None:
         self.widget_enabled = False
@@ -306,11 +302,10 @@ class TrayApp:
                               weekly.percentage if weekly else None]
             else:
                 self._bars = None
-            self._render()
-            if not self.animate:
-                self._show_static()
-            if self.widget:
-                self.widget.update(self._widget_rows())
+            peak = max((p for p in self._bars or [] if p is not None), default=None)
+            self.mood = character.mood_for(peak)
+            self._rebuild_icon()
+            self._push_widget()
             self.icon.title = self._tooltip()
             self.icon.update_menu()
         finally:
@@ -324,10 +319,10 @@ class TrayApp:
     def _animate_loop(self) -> None:
         index = 0
         while not self._stop.is_set():
-            if not self.animate:
+            frames = self._rendered
+            if not self.animate or len(frames) < 2:
                 self._stop.wait(0.5)
                 continue
-            frames = self._rendered
             index %= len(frames)
             image, duration = frames[index]
             self.icon.icon = image
@@ -353,6 +348,13 @@ class TrayApp:
         self.animate = not self.animate
         if not self.animate:
             self._show_static()
+        self._push_widget()
+        self._save_settings()
+
+    def _on_toggle_character(self, icon, item) -> None:
+        self.character_enabled = not self.character_enabled
+        self._rebuild_icon()
+        self._push_widget()
         self._save_settings()
 
     def _on_refresh(self, icon, item) -> None:
@@ -368,8 +370,7 @@ class TrayApp:
         self._start_widget()
         threading.Thread(target=self._loop, daemon=True).start()
         threading.Thread(target=self._promote_loop, daemon=True).start()
-        if self.animated:
-            threading.Thread(target=self._animate_loop, daemon=True).start()
+        threading.Thread(target=self._animate_loop, daemon=True).start()
 
     def run(self) -> None:
         self.icon.run(setup=self._setup)
@@ -391,5 +392,6 @@ def run(interval: int = 300, include_local: bool = True, animate: bool | None = 
         show_bars=prefs["icon_bars"] if show_bars is None else show_bars,
         widget=prefs["widget"] if widget is None else widget,
         widget_style=prefs["widget_style"],
+        character_on=prefs["character"],
     ).run()
     return 0

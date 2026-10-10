@@ -4,6 +4,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); 
 
 ## [Não lançado]
 
+### Adicionado
+- Personagem com emoções dentro do widget, colado à esquerda das barras: dormindo (0–10%), feliz, focado, bravo (75–95%) e chorando (≥ 95%), todos animados.
+- Arte própria por humor em `<config>/personagem/<humor>.gif|png`.
+- Menu da bandeja: *Personagem com emoções* e *Animar personagem*.
+
+### Alterado
+- O personagem saiu do ícone separado da bandeja: com o widget ligado, a bandeja mostra um ícone genérico.
+- O ícone do `.exe` passa a ser o personagem.
+
+### Removido
+- Suporte a `boneco.gif/.png/.ico` e à variável `CLAUDE_MONITOR_ICON` (substituídos pela pasta `personagem/`).
+
 ## [1.0.0] - 2026-10-09
 
 ### Adicionado

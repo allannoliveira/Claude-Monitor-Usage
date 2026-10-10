@@ -11,7 +11,8 @@ DEFAULTS = {
     "widget": True,                 # widget com barrinhas na barra de tarefas (Windows)
     "widget_style": "segmentos",    # segmentos | barra | compacto
     "icon_bars": False,             # barrinhas dentro do ícone da bandeja
-    "animate": True,                # animar boneco.gif
+    "animate": True,                # animar o personagem
+    "character": True,              # personagem com emoções no widget
 }
 
 
