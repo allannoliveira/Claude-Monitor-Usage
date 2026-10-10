@@ -18,12 +18,13 @@ if ! command -v uv >/dev/null 2>&1; then
     PATH="$HOME/.local/bin:$PATH"
 fi
 
-# 2. Boneco na pasta do usuário
+# 2. Arte própria do personagem (opcional): copia a pasta personagem/ do projeto
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/claude-monitor"
 mkdir -p "$CONFIG_DIR"
-for name in boneco.gif boneco.png boneco.ico; do
-    if [ -f "$SOURCE/$name" ]; then cp "$SOURCE/$name" "$CONFIG_DIR/"; echo "Ícone copiado: $CONFIG_DIR/$name"; fi
-done
+if [ -d "$SOURCE/personagem" ]; then
+    cp -r "$SOURCE/personagem" "$CONFIG_DIR/"
+    echo "Personagem copiado para $CONFIG_DIR/personagem"
+fi
 
 # 3. Instala (com PyGObject para o tray via AppIndicator, se as libs do sistema existirem)
 echo "Instalando claude-monitor de $SOURCE ..."

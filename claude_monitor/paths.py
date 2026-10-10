@@ -10,9 +10,6 @@ import os
 import sys
 from pathlib import Path
 
-ICON_CANDIDATES = ("boneco.gif", "boneco.png", "boneco.ico")
-
-
 def claude_config_dir() -> Path:
     """Diretório de configuração do Claude Code.
 
@@ -54,14 +51,6 @@ def projects_dirs() -> list[Path]:
     return result
 
 
-def app_root() -> Path:
-    """Raiz do projeto (ou pasta temporária do PyInstaller, se empacotado)."""
-    frozen_base = getattr(sys, "_MEIPASS", None)
-    if frozen_base:
-        return Path(frozen_base)
-    return Path(__file__).resolve().parent.parent
-
-
 def user_config_dir() -> Path:
     """Pasta de configuração do app: ``%APPDATA%\\claude-monitor`` no Windows,
     ``$XDG_CONFIG_HOME/claude-monitor`` (ou ``~/.config/claude-monitor``) no Linux."""
@@ -70,25 +59,3 @@ def user_config_dir() -> Path:
         return (Path(base) if base else Path.home() / "AppData" / "Roaming") / "claude-monitor"
     xdg = os.environ.get("XDG_CONFIG_HOME", "").strip()
     return (Path(xdg).expanduser() if xdg else Path.home() / ".config") / "claude-monitor"
-
-
-def find_icon_file() -> Path | None:
-    """Procura ``boneco.gif`` / ``boneco.png`` / ``boneco.ico``, nesta ordem:
-
-    1. ``CLAUDE_MONITOR_ICON`` (caminho explícito);
-    2. pasta de configuração do usuário (vale para a versão instalada);
-    3. raiz do projeto / pasta atual (rodando direto do código-fonte);
-    4. ``claude_monitor/assets`` (cópia embutida no pacote na instalação).
-    """
-    override = os.environ.get("CLAUDE_MONITOR_ICON", "").strip()
-    if override:
-        path = Path(override).expanduser()
-        return path if path.is_file() else None
-
-    package_assets = Path(__file__).resolve().parent / "assets"
-    for root in (user_config_dir(), app_root(), Path.cwd(), package_assets):
-        for name in ICON_CANDIDATES:
-            path = root / name
-            if path.is_file():
-                return path
-    return None

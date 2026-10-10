@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-from claude_monitor import local_logs
+from claude_monitor import character, local_logs
 from claude_monitor.formatting import compact_until, human_tokens, level
 from claude_monitor.usage_api import parse_usage_body
 from claude_monitor.widget_render import STYLE_ORDER, Row, next_style, render
@@ -77,3 +77,45 @@ def test_local_logs_dedupe(tmp_path, monkeypatch):
     assert result.last_5h.messages == 1
     assert result.last_5h.total == 100
     assert "claude-opus-5-5" in result.by_model_5h
+
+
+def test_mood_thresholds():
+    expected = {0: "dormindo", 9.9: "dormindo", 10: "feliz", 49: "feliz", 50: "focado",
+                75: "bravo", 94: "bravo", 95: "chorando", 100: "chorando", None: "feliz"}
+    for pct, mood in expected.items():
+        assert character.mood_for(pct) == mood, pct
+
+
+def test_character_frames_scale_and_animate(tmp_path, monkeypatch):
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    character.clear_cache()
+    for mood in character.MOODS:
+        frames = character.frames(mood, 48)
+        assert len(frames) == 4
+        assert all(img.height == 48 for img, _ in frames)
+        # quadros diferentes entre si = animação de verdade
+        assert len({img.tobytes() for img, _ in frames}) > 1, mood
+
+
+def test_character_custom_art(tmp_path, monkeypatch):
+    from PIL import Image
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    folder = tmp_path / "claude-monitor" / "personagem"
+    folder.mkdir(parents=True)
+    Image.new("RGBA", (24, 24), (255, 0, 0, 255)).save(folder / "bravo.png")
+    (folder / "feliz.gif").write_bytes(b"corrompido")
+    character.clear_cache()
+    bravo = character.frames("bravo", 48)
+    assert len(bravo) == 1 and bravo[0][0].getpixel((10, 10)) == (255, 0, 0, 255)
+    assert len(character.frames("feliz", 48)) == 4  # arquivo inválido -> desenho padrão
+    character.clear_cache()
+
+
+def test_render_with_character():
+    sprite = character.frames("feliz", 48)[0][0]
+    rows = [Row("5h", 30, NOW), Row("7d", 5, NOW)]
+    plain = render(rows, "segmentos", 48, 1.0)
+    with_char = render(rows, "segmentos", 48, 1.0, character=sprite)
+    assert with_char.width > plain.width + sprite.width - 1
